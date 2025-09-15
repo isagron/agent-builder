@@ -1,7 +1,7 @@
 [project]
 name = "agent-forge-ai"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI Agent Platform with Task Executor Agent - A comprehensive framework for building AI agents with LangChain, LangGraph, and task execution capabilities"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -25,6 +25,10 @@ dependencies = [
     "langgraph>=0.2.0",
     "pydantic-settings>=2.0.0",
 ]
+
+[project.scripts]
+agent-forge = "main:main"
+agent-forge-server = "main:main"
 
 [project.optional-dependencies]
 dev = [

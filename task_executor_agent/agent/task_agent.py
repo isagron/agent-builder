@@ -68,17 +68,19 @@ class TaskExecutionAgent:
         
         try:
             # Use the find_tasks tool
-            from task_executor_agent.tools.langchain_tools import find_tasks
-            tasks_data = await find_tasks(context.action_description)
+            # from task_executor_agent.tools.langchain_tools import find_tasks
+            from task_executor_agent.tools.langchain_tools_mock import find_tasks
+            tasks_data = await find_tasks.ainvoke({"action_description": context.action_description})
             
             # Convert to TaskInfo objects
             tasks = []
-            for task_data in tasks_data:
-                tasks.append(TaskInfo(
-                    task_id=task_data["task_id"],
-                    task_name=task_data["task_name"],
-                    description=task_data["description"]
-                ))
+            if tasks_data:
+                for task_data in tasks_data:
+                    tasks.append(TaskInfo(
+                        task_id=task_data["task_id"],
+                        task_name=task_data["task_name"],
+                        description=task_data["description"]
+                    ))
             
             context.available_tasks = tasks
             context.current_state = AgentState.SELECT_TASK
@@ -86,6 +88,8 @@ class TaskExecutionAgent:
             logger.info(f"Found {len(tasks)} tasks")
             
         except Exception as e:
+            import traceback
+            logger.error(f"Failed to find tasks: {e}\n{traceback.format_exc()}")
             logger.error(f"Failed to find tasks: {e}")
             context.error_message = f"Failed to find tasks: {str(e)}"
             context.current_state = AgentState.RETURN_RESULT
@@ -147,8 +151,9 @@ class TaskExecutionAgent:
         
         try:
             # Use the get_task_inputs tool
-            from task_executor_agent.tools.langchain_tools import get_task_inputs
-            inputs_data = await get_task_inputs(context.selected_task.task_id)
+            # from task_executor_agent.tools.langchain_tools import get_task_inputs
+            from task_executor_agent.tools.langchain_tools_mock import get_task_inputs
+            inputs_data = await get_task_inputs.ainvoke({"task_id": context.selected_task.task_id})
             
             # Convert to TaskProperty objects
             inputs = []
@@ -179,8 +184,9 @@ class TaskExecutionAgent:
         
         try:
             # Use the get_runtime_variables tool
-            from task_executor_agent.tools.langchain_tools import get_runtime_variables
-            vars_data = await get_runtime_variables(context.context_id)
+            # from task_executor_agent.tools.langchain_tools import get_runtime_variables
+            from task_executor_agent.tools.langchain_tools_mock import get_runtime_variables
+            vars_data = await get_runtime_variables.ainvoke({"context_id": context.context_id})
             
             # Convert to RuntimeVariable objects
             variables = []
@@ -274,12 +280,13 @@ class TaskExecutionAgent:
                 }
             
             # Use the run_task tool
-            from task_executor_agent.tools.langchain_tools import run_task
-            result = await run_task(
-                context.context_id,
-                context.selected_task.task_id,
-                input_assignments
-            )
+            # from task_executor_agent.tools.langchain_tools import run_task
+            from task_executor_agent.tools.langchain_tools_mock import run_task
+            result = await run_task.ainvoke({
+                "context_id": context.context_id,
+                "task_id": context.selected_task.task_id,
+                "input_assignments": input_assignments
+            })
             
             context.execution_result = result
             context.current_state = AgentState.RETURN_RESULT

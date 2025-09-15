@@ -133,6 +133,10 @@ def create_app() -> FastAPI:
         except Exception:
             pass
         
+        # Set tokenizers parallelism to avoid warnings
+        import os
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+        
         # Initialize RabbitMQ service
         try:
             import os

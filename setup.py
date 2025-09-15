@@ -1,0 +1,37 @@
+"""Setup script for agent-forge-ai."""
+
+from setuptools import setup, find_packages
+
+setup(
+    name="agent-forge-ai",
+    version="0.1.0",
+    packages=find_packages(),
+    python_requires=">=3.11",
+    install_requires=[
+        "fastapi>=0.111.0",
+        "uvicorn[standard]>=0.30.0",
+        "pydantic>=2.8.0",
+        "langchain>=0.2.12",
+        "langchain-core>=0.3.0",
+        "langchain-openai>=0.1.22",
+        "langchain-aws>=0.1.12",
+        "langchain-community>=0.2.11",
+        "faiss-cpu>=1.8.0.post1",
+        "tiktoken>=0.7.0",
+        "python-dotenv>=1.0.1",
+        "httpx>=0.27.0",
+        "requests>=2.32.3",
+        "tenacity>=9.0.0",
+        "sentence-transformers>=3.0.1",
+        "streamlit>=1.37.0",
+        "pika>=1.3.2",
+        "langgraph>=0.2.0",
+        "pydantic-settings>=2.0.0",
+    ],
+    entry_points={
+        "console_scripts": [
+            "agent-forge=main:main",
+            "agent-forge-server=main:main",
+        ],
+    },
+)
