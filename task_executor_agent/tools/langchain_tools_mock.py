@@ -1,11 +1,21 @@
 """LangChain tools for task executor communication."""
 
+import json
 import logging
+from datetime import datetime
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 from langchain.tools import tool
 
 from task_executor_agent.tools.http_client import get_http_client
+
+# Configure logging for this module
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +32,7 @@ async def find_tasks(action_description: str) -> List[Dict[str, Any]]:
         List of task information dictionaries with task_id, task_name, and description
     """
     logger.info(f"Finding tasks for action: {action_description}")
+    print(f"🔧 MOCK TOOLS: Finding tasks for action: {action_description}")
         
     tasks = []
     tasks.append({
@@ -43,13 +54,14 @@ async def find_tasks(action_description: str) -> List[Dict[str, Any]]:
     )
     
     logger.info(f"Found {len(tasks)} tasks for action: {action_description}")
+    print(f"✅ MOCK TOOLS: Found {len(tasks)} tasks for action: {action_description}")
     return tasks
         
 
 
 
 @tool
-async def get_task_inputs(task_id: str) -> List[Dict[str, Any]]:
+async def get_task_inputs(task_id: int) -> List[Dict[str, Any]]:
     """
     Retrieve input schema for a specific task.
     
@@ -60,7 +72,8 @@ async def get_task_inputs(task_id: str) -> List[Dict[str, Any]]:
         List of input property dictionaries with name, type, description, required, and default_value
     """
     try:
-       
+        logger.info(f"Getting task inputs for task: {task_id}")
+        print(f"🔧 MOCK TOOLS: Getting task inputs for task: {task_id}")
         inputs = []
 
 
@@ -116,16 +129,9 @@ async def get_task_inputs(task_id: str) -> List[Dict[str, Any]]:
                 "required": True,
                 "default_value": None
             })
-        for input_prop in response.inputs:
-            inputs.append({
-                "name": input_prop.name,
-                "type": input_prop.type.value,
-                "description": input_prop.description,
-                "required": input_prop.required,
-                "default_value": input_prop.default_value
-            })
         
         logger.info(f"Retrieved {len(inputs)} inputs for task: {task_id}")
+        print(f"✅ MOCK TOOLS: Retrieved {len(inputs)} inputs for task: {task_id}")
         return inputs
         
     except Exception as e:
@@ -145,8 +151,6 @@ async def get_runtime_variables(context_id: str) -> List[Dict[str, Any]]:
         List of variable dictionaries with variable_id, name, type, description
     """
     try:
-        client = await get_http_client()
-        response = await client.get_runtime_variables(context_id)
         
         variables = []
         variables.append({
@@ -175,12 +179,13 @@ async def get_runtime_variables(context_id: str) -> List[Dict[str, Any]]:
         })
         variables.append({
             "variable_id": "6",
-            "name": "pint_threshold",
+            "name": "ping_threshold",
             "type": "integer",
             "description": "Threshold number of packets per minute"
         })
         
         logger.info(f"Retrieved {len(variables)} variables for context: {context_id}")
+        print(f"✅ MOCK TOOLS: Retrieved {len(variables)} variables for context: {context_id}")
         return variables
         
     except Exception as e:
@@ -191,7 +196,7 @@ async def get_runtime_variables(context_id: str) -> List[Dict[str, Any]]:
 @tool
 async def run_task(
     context_id: str,
-    task_id: str,
+    task_id: int,
     input_assignments: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
@@ -212,8 +217,9 @@ async def run_task(
             'task_id': task_id, 
             'input_assignments': input_assignments
         }, indent=2)}")
+        print(f"🔧 MOCK TOOLS: Running task {task_id} with context {context_id}")
         # Mock responses for different task IDs
-        if task_id == "1":
+        if task_id == 1:
             response = SimpleNamespace(
                 success=True,
                 result={
@@ -222,7 +228,7 @@ async def run_task(
                 },
                 error_message=None
             )
-        elif task_id == "2":
+        elif task_id == 2:
             response = SimpleNamespace(
                 success=True, 
                 result={
@@ -232,12 +238,12 @@ async def run_task(
                 },
                 error_message=None
             )
-        elif task_id == "3":
+        elif task_id == 3:
             response = SimpleNamespace(
                 success=True,
                 result={
                     "alert_sent": True,
-                    "threshold": input_assignments.get("pint_threshold"),
+                    "threshold": input_assignments.get("ping_threshold"),
                     "current_value": 180,
                     "timestamp": datetime.utcnow().isoformat()
                 },

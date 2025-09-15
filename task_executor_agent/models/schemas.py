@@ -92,10 +92,8 @@ class RuntimeVariable(BaseModel):
     """Runtime variable model."""
     variable_id: str = Field(..., description="Unique variable identifier")
     name: str = Field(..., description="Variable name")
-    type: VariableType = Field(..., description="Variable type")
+    var_type: str = Field(..., description="Variable type")
     description: str = Field(..., description="Variable description")
-    value: Any = Field(..., description="Variable value")
-
 
 class InputAssignment(BaseModel):
     """Input assignment model."""
@@ -117,6 +115,7 @@ class AgentContext(BaseModel):
     mapped_inputs: Dict[str, InputAssignment] = Field(default_factory=dict, description="Mapped input assignments")
     execution_result: Optional[Any] = Field(default=None, description="Task execution result")
     error_message: Optional[str] = Field(default=None, description="Error message if any")
+    agent_memory: Optional[Dict[str, Any]] = Field(default=None, description="Agent memory for context")
     start_time: datetime = Field(default_factory=datetime.utcnow, description="Execution start time")
 
 

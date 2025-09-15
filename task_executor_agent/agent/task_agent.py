@@ -1,5 +1,6 @@
 """LangGraph-based task execution agent."""
 
+import json
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -65,6 +66,7 @@ class TaskExecutionAgent:
     async def _find_tasks(self, context: AgentContext) -> AgentContext:
         """Find relevant tasks based on action description."""
         logger.info(f"Finding tasks for: {context.action_description}")
+        print(f"🔍 TASK AGENT: Finding tasks for: {context.action_description}")
         
         try:
             # Use the find_tasks tool
@@ -86,6 +88,7 @@ class TaskExecutionAgent:
             context.current_state = AgentState.SELECT_TASK
             
             logger.info(f"Found {len(tasks)} tasks")
+            print(f"✅ TASK AGENT: Found {len(tasks)} tasks")
             
         except Exception as e:
             import traceback
@@ -99,6 +102,7 @@ class TaskExecutionAgent:
     async def _select_task(self, context: AgentContext) -> AgentContext:
         """Select the most suitable task from available options using LLM agent."""
         logger.info(f"Selecting task from {len(context.available_tasks)} options")
+        print(f"🎯 TASK AGENT: Selecting task from {len(context.available_tasks)} options")
         
         if not context.available_tasks:
             context.error_message = "No tasks found for the given action"
@@ -134,6 +138,8 @@ class TaskExecutionAgent:
                     logger.warning("LLM couldn't select a task, using first available task")
                     
             except Exception as e:
+                import traceback
+                logger.error(f"Exception stacktrace:\n{traceback.format_exc()}")
                 logger.error(f"Task selection failed: {e}")
                 # Fallback to first task
                 context.selected_task = context.available_tasks[0]
@@ -153,7 +159,7 @@ class TaskExecutionAgent:
             # Use the get_task_inputs tool
             # from task_executor_agent.tools.langchain_tools import get_task_inputs
             from task_executor_agent.tools.langchain_tools_mock import get_task_inputs
-            inputs_data = await get_task_inputs.ainvoke({"task_id": context.selected_task.task_id})
+            inputs_data = await get_task_inputs.ainvoke({"task_id": str(context.selected_task.task_id)})
             
             # Convert to TaskProperty objects
             inputs = []
@@ -172,6 +178,8 @@ class TaskExecutionAgent:
             logger.info(f"Retrieved {len(inputs)} input properties")
             
         except Exception as e:
+            import traceback
+            logger.error(f"Exception stacktrace:\n{traceback.format_exc()}")
             logger.error(f"Failed to get task inputs: {e}")
             context.error_message = f"Failed to get task inputs: {str(e)}"
             context.current_state = AgentState.RETURN_RESULT
@@ -194,9 +202,8 @@ class TaskExecutionAgent:
                 variables.append(RuntimeVariable(
                     variable_id=var_data["variable_id"],
                     name=var_data["name"],
-                    type=var_data["type"],
+                    var_type=var_data["type"],
                     description=var_data["description"],
-                    value=var_data["value"]
                 ))
             
             context.runtime_variables = variables
@@ -205,6 +212,8 @@ class TaskExecutionAgent:
             logger.info(f"Retrieved {len(variables)} runtime variables")
             
         except Exception as e:
+            import traceback
+            logger.error(f"Exception stacktrace:\n{traceback.format_exc()}")
             logger.error(f"Failed to get runtime variables: {e}")
             context.error_message = f"Failed to get runtime variables: {str(e)}"
             context.current_state = AgentState.RETURN_RESULT
@@ -259,6 +268,8 @@ class TaskExecutionAgent:
                 logger.warning(f"Unmapped inputs: {mapping_response.unmapped_inputs}")
             
         except Exception as e:
+            import traceback
+            logger.error(f"Failed to map inputs: {e}\n{traceback.format_exc()}")
             logger.error(f"Failed to map inputs: {e}")
             context.error_message = f"Failed to map inputs: {str(e)}"
             context.current_state = AgentState.RETURN_RESULT
@@ -287,6 +298,9 @@ class TaskExecutionAgent:
                 "task_id": context.selected_task.task_id,
                 "input_assignments": input_assignments
             })
+
+            # Log result as JSON
+            logger.info(f"Task execution result: {json.dumps(result, indent=2)}")
             
             context.execution_result = result
             context.current_state = AgentState.RETURN_RESULT
@@ -298,6 +312,9 @@ class TaskExecutionAgent:
                 context.error_message = result.get("error_message", "Task execution failed")
             
         except Exception as e:
+
+            import traceback
+            logger.error(f"Exception stacktrace:\n{traceback.format_exc()}")    
             logger.error(f"Failed to execute task: {e}")
             context.error_message = f"Failed to execute task: {str(e)}"
             context.current_state = AgentState.RETURN_RESULT
@@ -352,6 +369,7 @@ class TaskExecutionAgent:
             Execution result dictionary
         """
         logger.info(f"Starting task execution for action: {action_description}")
+        print(f"🚀 TASK AGENT: Starting execution for action: {action_description}")
         
         # Create initial context
         context = AgentContext(
@@ -359,19 +377,38 @@ class TaskExecutionAgent:
             context_id=context_id,
             current_state=AgentState.FIND_TASKS
         )
+        print(f"📋 TASK AGENT: Created context with ID: {context_id}")
         
         try:
             # Run the graph
             result_context = await self.graph.ainvoke(context)
+ 
+            print(f"🔍 TASK AGENT: Result context type: {type(result_context)}")
+            print(f"🔍 TASK AGENT: Result context: {result_context}")
             
-            # Return the execution result
-            return result_context.execution_result or {
-                "success": False,
-                "error_message": "No result generated",
-                "execution_time": 0
-            }
+            # Handle both dict and AgentContext objects
+            if isinstance(result_context, dict):
+                # If it's a dict, extract the execution result directly
+                execution_result = result_context.get('execution_result')
+                if execution_result:
+                    return execution_result
+                else:
+                    return {
+                        "success": False,
+                        "error_message": "No execution result found in context",
+                        "execution_time": 0
+                    }
+            else:
+                # If it's an AgentContext object, use the attribute
+                return result_context.execution_result or {
+                    "success": False,
+                    "error_message": "No result generated",
+                    "execution_time": 0
+                }
             
         except Exception as e:
+            import traceback
+            logger.error(f"Exception stacktrace:\n{traceback.format_exc()}")
             logger.error(f"Task execution failed: {e}")
             return {
                 "success": False,

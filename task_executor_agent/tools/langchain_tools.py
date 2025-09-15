@@ -7,6 +7,13 @@ from langchain.tools import tool
 
 from task_executor_agent.tools.http_client import get_http_client
 
+# Configure logging for this module
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+
 logger = logging.getLogger(__name__)
 
 
