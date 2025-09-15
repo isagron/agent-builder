@@ -33,6 +33,13 @@ from task_executor_agent.tools.http_client import close_http_client
 
 
 def create_app() -> FastAPI:
+    # Load .env file first, before reading any environment variables
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except Exception:
+        pass
+    
     app = FastAPI(
         title="Agent Forge AI", 
         version="0.1.0",
@@ -131,14 +138,6 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     async def on_startup() -> None:
-        # Load .env if present
-        try:
-            from dotenv import load_dotenv
-
-            load_dotenv()
-        except Exception:
-            pass
-        
         # Set tokenizers parallelism to avoid warnings
         import os
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
