@@ -35,40 +35,59 @@ class DocumentIndexBedrock(DocumentIndexInterface):
 
     async def initialize(self) -> None:
         """Initialize the Bedrock-based document index."""
+        print("🚀 BEDROCK: Initializing document index...")
         self.doc_root.mkdir(parents=True, exist_ok=True)
         
         # Load Bedrock embeddings model
-        model = await asyncio.get_event_loop().run_in_executor(None, self._load_model)
+        print("🔧 BEDROCK: Loading embeddings model...")
+        self._model = await asyncio.get_event_loop().run_in_executor(None, self._load_model)
         
         # Scan documents
+        print(f"📁 BEDROCK: Scanning documents in {self.doc_root}...")
         docs = await asyncio.get_event_loop().run_in_executor(None, self._scan_docs)
         if not docs:
+            print("⚠️ BEDROCK: No documents found, skipping index creation")
             self._index = None
             self._id_to_doc = {}
             return
         
+        print(f"📄 BEDROCK: Found {len(docs)} documents")
+        
         # Read document texts
+        print("📖 BEDROCK: Reading document contents...")
         texts = [self._read_file_text(Path(d.path)) for d in docs]
         
         # Generate embeddings using Bedrock
+        print("🧠 BEDROCK: Generating embeddings...")
         embeddings = await self._generate_embeddings(texts)
         
         # Create FAISS index
+        print("🔍 BEDROCK: Creating FAISS index...")
         self._embeddings_dim = embeddings.shape[1]
         index = faiss.IndexFlatIP(self._embeddings_dim)
         index.add(embeddings)
         
-        self._model = model
         self._index = index
         self._id_to_doc = {i: doc for i, doc in enumerate(docs)}
+        print(f"✅ BEDROCK: Document index initialized with {len(docs)} documents")
 
     def _load_model(self) -> BedrockEmbeddings:
         """Load the Bedrock embeddings model."""
-        return BedrockEmbeddings(
-            model_id=self.embedding_model,
-            region_name=self.region_name,
-            credentials_profile_name=self.credentials_profile_name
-        )
+        try:
+            print(f"🔧 BEDROCK: Loading model {self.embedding_model} in region {self.region_name}")
+            if self.credentials_profile_name:
+                print(f"🔧 BEDROCK: Using AWS profile: {self.credentials_profile_name}")
+            
+            model = BedrockEmbeddings(
+                model_id=self.embedding_model,
+                region_name=self.region_name,
+                credentials_profile_name=self.credentials_profile_name
+            )
+            print("✅ BEDROCK: Model loaded successfully")
+            return model
+        except Exception as e:
+            print(f"❌ BEDROCK: Failed to load model: {e}")
+            raise
 
     def _scan_docs(self) -> List[DocPointer]:
         """Scan the document directory for markdown and text files."""
