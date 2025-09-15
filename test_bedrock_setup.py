@@ -53,11 +53,13 @@ async def test_bedrock_setup():
         
         if profile:
             session = boto3.Session(profile_name=profile)
-            bedrock = session.client('bedrock-runtime', region_name=region)
-            print(f"✅ Bedrock client created with profile '{profile}' in region '{region}'")
+            bedrock_runtime = session.client('bedrock-runtime', region_name=region)
+            bedrock = session.client('bedrock', region_name=region)
+            print(f"✅ Bedrock clients created with profile '{profile}' in region '{region}'")
         else:
-            bedrock = boto3.client('bedrock-runtime', region_name=region)
-            print(f"✅ Bedrock client created with default credentials in region '{region}'")
+            bedrock_runtime = boto3.client('bedrock-runtime', region_name=region)
+            bedrock = boto3.client('bedrock', region_name=region)
+            print(f"✅ Bedrock clients created with default credentials in region '{region}'")
         
         # Test list foundation models
         try:
