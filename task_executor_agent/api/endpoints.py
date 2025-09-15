@@ -55,7 +55,14 @@ async def get_agent() -> TaskExecutionAgent:
 router = APIRouter(prefix="/api/task-executor", tags=["task-executor"])
 
 
-@router.post("/execute", response_model=ExecuteResponse)
+@router.post(
+    "/execute", 
+    response_model=ExecuteResponse,
+    tags=["task-executor"],
+    summary="Execute a task",
+    description="Execute a task based on action description using the task execution agent.",
+    response_description="Task execution result with success status and details"
+)
 async def execute_task(
     request: ExecuteRequest,
     agent: TaskExecutionAgent = Depends(get_agent)
@@ -103,7 +110,14 @@ async def execute_task(
         )
 
 
-@router.get("/status", response_model=StatusResponse)
+@router.get(
+    "/status", 
+    response_model=StatusResponse,
+    tags=["task-executor"],
+    summary="Get agent status",
+    description="Get the current status and health information of the task execution agent.",
+    response_description="Agent status information including uptime and health"
+)
 async def get_status(
     agent: TaskExecutionAgent = Depends(get_agent)
 ) -> StatusResponse:
@@ -140,7 +154,13 @@ async def get_status(
     )
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    tags=["health"],
+    summary="Health check",
+    description="Simple health check for the task executor service.",
+    response_description="Health status of the task executor service"
+)
 async def health_check() -> Dict[str, Any]:
     """
     Simple health check endpoint.
@@ -155,7 +175,13 @@ async def health_check() -> Dict[str, Any]:
     }
 
 
-@router.get("/tools")
+@router.get(
+    "/tools",
+    tags=["tools"],
+    summary="List available tools",
+    description="List all available tools for task execution.",
+    response_description="List of available tools with schemas"
+)
 async def list_tools() -> Dict[str, Any]:
     """
     List available tools.
