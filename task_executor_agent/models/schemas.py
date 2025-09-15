@@ -74,7 +74,7 @@ class StatusResponse(BaseModel):
 # Task Executor Models
 class TaskInfo(BaseModel):
     """Task information model."""
-    task_id: ints on  = Field(..., description="Unique task identifier")
+    task_id: int  = Field(..., description="Unique task identifier")
     task_name: str = Field(..., description="Human-readable task name")
     description: str = Field(..., description="Task description")
 

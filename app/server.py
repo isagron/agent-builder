@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.services.doc_index import DocumentIndex, DocPointer
+from app.services.doc_index_factory import create_document_index
+from app.services.doc_index_interface import DocPointer
 from app.memory.session_memory import SessionMemoryStore
 from app.agents.registry import AgentRegistry
 from app.services.rabbitmq_service import initialize_rabbitmq_service
@@ -117,7 +119,11 @@ def create_app() -> FastAPI:
 
     # Shared singletons
     session_memory = SessionMemoryStore()
-    doc_index = DocumentIndex(doc_root="doc")
+    
+    # Create document index based on configuration
+    doc_index_implementation = os.getenv("DOC_INDEX_IMPLEMENTATION", "auto")
+    doc_index = create_document_index(doc_root="doc", implementation=doc_index_implementation)
+    
     agent_registry = AgentRegistry(session_memory=session_memory, doc_index=doc_index)
     
     # Initialize Task Executor Agent

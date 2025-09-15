@@ -60,9 +60,7 @@ async def get_task_inputs(task_id: str) -> List[Dict[str, Any]]:
         List of input property dictionaries with name, type, description, required, and default_value
     """
     try:
-        client = await get_http_client()
-        response = await client.get_task_inputs(task_id)
-        
+       
         inputs = []
 
 

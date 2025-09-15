@@ -111,12 +111,32 @@ agent-forge-ai/
 ### Environment Variables
 Create a `.env` file for configuration:
 ```env
+# Document Index Configuration
+DOC_INDEX_IMPLEMENTATION=auto  # "sentence_transformers", "bedrock", or "auto"
+
+# AWS Bedrock Configuration (if using bedrock)
+AWS_DEFAULT_REGION=us-east-1
+AWS_PROFILE=default
+BEDROCK_EMBEDDING_MODEL=amazon.titan-embed-text-v1
+
+# OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key
+
+# RabbitMQ Configuration
 RABBITMQ_HOST=localhost
 RABBITMQ_PORT=5672
 RABBITMQ_USERNAME=guest
 RABBITMQ_PASSWORD=guest
 ```
+
+### Document Index Implementations
+
+The application supports two document indexing implementations:
+
+- **Sentence Transformers** (default): Fast, local, requires Hugging Face access
+- **AWS Bedrock**: Enterprise-grade, no Hugging Face dependency, requires AWS credentials
+
+See [CONFIGURATION.md](CONFIGURATION.md) for detailed configuration options.
 
 ## 🤝 Contributing
 
