@@ -51,6 +51,52 @@ python -m uvicorn app.server:app --reload --host 0.0.0.0 --port 8000
 agent-forge
 ```
 
+### Quick Start for Different Environments
+
+#### 🏢 Corporate Environment (AWS Bedrock)
+```bash
+# Clone and install
+git clone https://github.com/isagron/agent-builder.git
+cd agent-builder
+uv sync
+
+# Configure for Bedrock
+export DOC_INDEX_IMPLEMENTATION=bedrock
+export AWS_DEFAULT_REGION=us-east-1
+export AWS_PROFILE=your-profile
+
+# Run
+python main.py
+```
+
+#### 💻 Development Environment (Sentence Transformers)
+```bash
+# Clone and install
+git clone https://github.com/isagron/agent-builder.git
+cd agent-builder
+uv sync
+
+# Configure for Sentence Transformers
+export DOC_INDEX_IMPLEMENTATION=sentence_transformers
+
+# Run
+python main.py
+```
+
+#### 🤖 Auto-Detection (Recommended)
+```bash
+# Clone and install
+git clone https://github.com/isagron/agent-builder.git
+cd agent-builder
+uv sync
+
+# Let the system decide (default)
+# No configuration needed - will auto-detect
+
+# Run
+python main.py
+```
+
 ### Access the Application
 
 - **API Server**: http://localhost:8000
@@ -129,12 +175,70 @@ RABBITMQ_USERNAME=guest
 RABBITMQ_PASSWORD=guest
 ```
 
+## ⚙️ Configuration
+
 ### Document Index Implementations
 
 The application supports two document indexing implementations:
 
 - **Sentence Transformers** (default): Fast, local, requires Hugging Face access
 - **AWS Bedrock**: Enterprise-grade, no Hugging Face dependency, requires AWS credentials
+
+### How to Control Which Implementation to Use
+
+#### Method 1: Environment Variable (Recommended)
+```bash
+# Use Sentence Transformers (default)
+export DOC_INDEX_IMPLEMENTATION=sentence_transformers
+
+# Use AWS Bedrock
+export DOC_INDEX_IMPLEMENTATION=bedrock
+
+# Auto-detect (tries sentence_transformers first, falls back to bedrock)
+export DOC_INDEX_IMPLEMENTATION=auto
+```
+
+#### Method 2: .env File
+Create a `.env` file in your project root:
+```env
+# Document Index Configuration
+DOC_INDEX_IMPLEMENTATION=bedrock
+
+# AWS Bedrock Configuration (only needed if using bedrock)
+AWS_DEFAULT_REGION=us-east-1
+AWS_PROFILE=default
+BEDROCK_EMBEDDING_MODEL=amazon.titan-embed-text-v1
+```
+
+#### Method 3: Command Line Override
+```bash
+# Force Bedrock implementation
+DOC_INDEX_IMPLEMENTATION=bedrock python main.py
+
+# Force Sentence Transformers
+DOC_INDEX_IMPLEMENTATION=sentence_transformers python main.py
+```
+
+### Configuration Options
+
+| Option | Description | Use Case |
+|--------|-------------|----------|
+| `sentence_transformers` | Hugging Face Sentence Transformers | Development, when Hugging Face is accessible |
+| `bedrock` | AWS Bedrock embeddings | Corporate environments, production |
+| `auto` | Auto-detect available implementation | Default, works in most environments |
+
+### Check Available Implementations
+
+```python
+from app.services.doc_index_factory import get_available_implementations
+print(get_available_implementations())
+```
+
+### Test Your Configuration
+
+```bash
+python test_doc_index_implementations.py
+```
 
 See [CONFIGURATION.md](CONFIGURATION.md) for detailed configuration options.
 
