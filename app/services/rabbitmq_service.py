@@ -1,4 +1,21 @@
-"""RabbitMQ service for sending agent creation messages."""
+"""RabbitMQ service for sending agent and task execution messages.
+
+Routing Keys:
+- agent.created: Agent creation events
+- agent.deleted: Agent deletion events  
+- task.progress.started: Task execution started
+- task.progress.finding_tasks: Searching for available tasks
+- task.progress.selecting_task: Selecting the best task
+- task.progress.selected: Task selection completed
+- task.progress.getting_inputs: Getting task input requirements
+- task.progress.getting_variables: Fetching runtime variables
+- task.progress.mapping_inputs: Mapping inputs to variables
+- task.progress.executing: Executing the selected task
+- task.progress.completed: Task execution completed successfully
+- task.progress.failed: Task execution failed
+
+Exchange: agent_events (topic)
+"""
 
 import json
 import logging
@@ -102,10 +119,10 @@ class RabbitMQService:
             # Convert to JSON
             message_json = json.dumps(message, indent=2)
             
-            # Publish message
+            # Publish message with agent-specific routing key
             channel.basic_publish(
                 exchange=self.exchange_name,
-                routing_key=self.routing_key,
+                routing_key="agent.created",
                 body=message_json,
                 properties=pika.BasicProperties(
                     delivery_mode=2,  # Make message persistent
@@ -216,7 +233,7 @@ class RabbitMQService:
             message_json = json.dumps(message, indent=2)
             
             # Publish message with task-specific routing key
-            routing_key = f"task.{event_type.split('.')[-1]}"  # e.g., "task.started", "task.completed"
+            routing_key = f"task.progress.{event_type.split('.')[-1]}"  # e.g., "task.progress.started", "task.progress.completed"
             channel.basic_publish(
                 exchange=self.exchange_name,
                 routing_key=routing_key,
