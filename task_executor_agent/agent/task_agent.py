@@ -99,6 +99,12 @@ class TaskExecutionAgent:
             task_count = progress_data.get("available_tasks_count", 0) if progress_data else 0
             return f"🎯 Selecting the best task from {task_count} available options"
         
+        elif event_type == "task.selected":
+            task_name = progress_data.get("selected_task_name", "Unknown") if progress_data else "Unknown"
+            task_id = progress_data.get("selected_task_id", "Unknown") if progress_data else "Unknown"
+            task_description = progress_data.get("selected_task_description", "No description available") if progress_data else "No description available"
+            return f"✅ Selected task: '{task_name}' (ID: {task_id})\n📝 Description: {task_description}"
+        
         elif event_type == "task.getting_inputs":
             task_name = progress_data.get("selected_task_name", "Unknown") if progress_data else "Unknown"
             task_id = progress_data.get("selected_task_id", "Unknown") if progress_data else "Unknown"
@@ -233,6 +239,17 @@ class TaskExecutionAgent:
         
         context.current_state = AgentState.GET_INPUTS
         logger.info(f"Selected task: {context.selected_task.task_name}")
+        
+        # Send task selection details message
+        self._send_progress_message(
+            context, 
+            "task.selected", 
+            {
+                "selected_task_id": context.selected_task.task_id,
+                "selected_task_name": context.selected_task.task_name,
+                "selected_task_description": context.selected_task.description
+            }
+        )
         
         return context
     
