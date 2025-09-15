@@ -1,0 +1,14 @@
+Procedure: No Internet Connectivity
+
+Step 1: Check Local Connection
+	•	Verify that Wi-Fi or Ethernet is connected.
+	•	If using Wi-Fi, ensure you are connected to the correct network and signal strength is good.
+
+Step 2: Test Basic Connectivity
+	•	Run ping 8.8.8.8.
+	•	If successful → the internet works, but DNS may be the issue.
+	•	If it fails → the problem is with the local router or ISP.
+
+Step 3: Restart Network Equipment
+	•	Restart your computer’s network adapter (disable/enable Wi-Fi or Ethernet).
+	•	If still failing, restart the modem/router.

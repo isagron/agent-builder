@@ -1,0 +1,57 @@
+Procedure: Investigating External Server Connectivity Issues
+
+Step 1: Verify Basic Network Connectivity
+	1.	Check if the computer is connected to the network (Wi-Fi/Ethernet).
+	•	Windows: look at the network icon in the taskbar.
+	•	Linux/macOS: run ifconfig or ip addr and check for a valid IP address.
+	2.	Test internet connectivity:
+	•	Run ping 8.8.8.8 (Google DNS).
+	•	If it fails, there is a local network or ISP problem.
+
+⸻
+
+Step 2: Verify DNS Resolution
+	1.	Run nslookup <server_name> or dig <server_name>.
+	•	If DNS fails, try pinging the server’s IP directly.
+	•	If IP works but DNS does not, the issue is with DNS configuration.
+	•	Check /etc/resolv.conf (Linux/macOS) or DNS settings in Windows.
+
+⸻
+
+Step 3: Test Server Reachability
+	1.	Run ping <server_ip>.
+	•	If it works, the server is reachable.
+	•	If it fails, ICMP may be blocked or the server is down.
+	2.	Run traceroute <server_ip> (Linux/macOS) or tracert <server_ip> (Windows).
+	•	This helps identify where the traffic is being blocked (local router, ISP, or further).
+
+⸻
+
+Step 4: Check Firewall and Security Rules
+	1.	Verify if local firewall rules block outgoing traffic:
+	•	Linux: sudo iptables -L -n or sudo ufw status.
+	•	Windows: check Windows Defender Firewall settings.
+	2.	If using a corporate or cloud network, check security groups, proxy, or VPN restrictions.
+
+⸻
+
+Step 5: Test Application-Level Connectivity
+	1.	If connecting on a specific port (e.g., SSH on port 22, HTTP on 80, HTTPS on 443):
+	•	Run telnet <server_ip> <port> or nc -vz <server_ip> <port>.
+	•	If the port is closed or filtered, the connection will fail.
+	2.	If the service requires credentials or tokens, verify they are valid.
+
+⸻
+
+Step 6: Check Server Status
+	1.	Confirm the external server is online and not under maintenance.
+	2.	If you can reach the server from another machine or network, the issue is local.
+	3.	If the server is unreachable globally, the issue is with the server itself.
+
+⸻
+
+Step 7: Escalation / Resolution
+	•	If all network checks are correct but connection still fails:
+	•	Gather logs (/var/log/syslog, application logs).
+	•	Document IP, port, traceroute, and error messages.
+	•	Escalate to the network administrator or server owner.

@@ -1,0 +1,2 @@
+Your task is to extract a list of the expected inputs to apply a procedure. You will be given a procedure description, and you should return a list in a json format. Each item in the list should have the following properties: name (the name of the property), description (the description of the property base on the procedure), type (the type of the property, e.g. string, integer, etc)
+
