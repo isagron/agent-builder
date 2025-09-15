@@ -180,6 +180,60 @@ class RabbitMQService:
         except Exception as e:
             logger.error(f"Error closing RabbitMQ connection: {e}")
     
+    def send_task_progress_message(
+        self,
+        context_id: str,
+        event_type: str,
+        current_state: str,
+        progress_data: Optional[Dict] = None
+    ) -> bool:
+        """
+        Send task execution progress message via RabbitMQ.
+        
+        Args:
+            context_id: The task execution context ID
+            event_type: Type of progress event (e.g., 'task.started', 'task.completed')
+            current_state: Current execution state
+            progress_data: Additional progress data
+            
+        Returns:
+            True if message sent successfully, False otherwise
+        """
+        try:
+            channel = self._get_channel()
+            
+            # Prepare message payload
+            message = {
+                "event_type": event_type,
+                "context_id": context_id,
+                "current_state": current_state,
+                "timestamp": self._get_timestamp(),
+                "progress_data": progress_data or {},
+                "message": progress_data.get("message", f"Task progress: {event_type}") if progress_data else f"Task progress: {event_type}"
+            }
+            
+            # Convert to JSON
+            message_json = json.dumps(message, indent=2)
+            
+            # Publish message with task-specific routing key
+            routing_key = f"task.{event_type.split('.')[-1]}"  # e.g., "task.started", "task.completed"
+            channel.basic_publish(
+                exchange=self.exchange_name,
+                routing_key=routing_key,
+                body=message_json,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # Make message persistent
+                    content_type="application/json"
+                )
+            )
+            
+            logger.info(f"Task progress message sent: {event_type} for context {context_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to send task progress message: {e}")
+            return False
+    
     def _get_timestamp(self) -> str:
         """Get current timestamp in ISO format."""
         from datetime import datetime
@@ -254,3 +308,29 @@ def send_agent_created_message(
         return False
     
     return service.send_agent_created_message(agent_id, session_id, additional_data)
+
+
+def send_task_progress_message(
+    context_id: str,
+    event_type: str,
+    current_state: str,
+    progress_data: Optional[Dict] = None
+) -> bool:
+    """
+    Send task execution progress message using the global RabbitMQ service.
+    
+    Args:
+        context_id: The task execution context ID
+        event_type: Type of progress event (e.g., 'task.started', 'task.completed')
+        current_state: Current execution state
+        progress_data: Additional progress data
+        
+    Returns:
+        True if message sent successfully, False otherwise
+    """
+    service = get_rabbitmq_service()
+    if service is None:
+        logger.warning("RabbitMQ service not initialized, skipping task progress message")
+        return False
+    
+    return service.send_task_progress_message(context_id, event_type, current_state, progress_data)

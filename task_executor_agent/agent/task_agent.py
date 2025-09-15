@@ -20,6 +20,14 @@ from task_executor_agent.models.schemas import (
 from task_executor_agent.agent.task_selection_agent import TaskSelectionAgent, TaskSelectionRequest
 from task_executor_agent.agent.input_mapping_agent import InputMappingAgent, InputMappingRequest
 
+# Import RabbitMQ service for progress messaging
+try:
+    from app.services.rabbitmq_service import send_task_progress_message
+    RABBITMQ_AVAILABLE = True
+except ImportError:
+    RABBITMQ_AVAILABLE = False
+    logger.warning("RabbitMQ service not available, progress messages will be skipped")
+
 logger = logging.getLogger(__name__)
 
 
@@ -63,10 +71,81 @@ class TaskExecutionAgent:
         
         return graph.compile()
     
+    def _send_progress_message(self, context: AgentContext, event_type: str, progress_data: Optional[Dict] = None) -> None:
+        """Send progress message via RabbitMQ if available."""
+        if RABBITMQ_AVAILABLE:
+            try:
+                # Compose human-readable message
+                message_text = self._compose_progress_message(event_type, context, progress_data)
+                
+                send_task_progress_message(
+                    context_id=context.context_id,
+                    event_type=event_type,
+                    current_state=context.current_state.value,
+                    progress_data={"message": message_text}
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send progress message: {e}")
+    
+    def _compose_progress_message(self, event_type: str, context: AgentContext, progress_data: Optional[Dict] = None) -> str:
+        """Compose human-readable progress message."""
+        if event_type == "task.started":
+            return f"🚀 Task execution started for: '{context.action_description}' (Context: {context.context_id})"
+        
+        elif event_type == "task.finding_tasks":
+            return f"🔍 Searching for available tasks that can handle: '{context.action_description}'"
+        
+        elif event_type == "task.selecting_task":
+            task_count = progress_data.get("available_tasks_count", 0) if progress_data else 0
+            return f"🎯 Selecting the best task from {task_count} available options"
+        
+        elif event_type == "task.getting_inputs":
+            task_name = progress_data.get("selected_task_name", "Unknown") if progress_data else "Unknown"
+            task_id = progress_data.get("selected_task_id", "Unknown") if progress_data else "Unknown"
+            return f"📋 Getting input requirements for task: '{task_name}' (ID: {task_id})"
+        
+        elif event_type == "task.getting_variables":
+            return f"🔧 Fetching available runtime variables for context: {context.context_id}"
+        
+        elif event_type == "task.mapping_inputs":
+            inputs_count = progress_data.get("task_inputs_count", 0) if progress_data else 0
+            vars_count = progress_data.get("runtime_variables_count", 0) if progress_data else 0
+            return f"🔗 Mapping {inputs_count} task inputs to {vars_count} runtime variables using AI"
+        
+        elif event_type == "task.executing":
+            task_name = progress_data.get("selected_task_name", "Unknown") if progress_data else "Unknown"
+            inputs_count = progress_data.get("mapped_inputs_count", 0) if progress_data else 0
+            return f"⚡ Executing task: '{task_name}' with {inputs_count} mapped inputs"
+        
+        elif event_type == "task.completed":
+            task_name = progress_data.get("selected_task_name", "Unknown") if progress_data else "Unknown"
+            result = progress_data.get("execution_result", {}) if progress_data else {}
+            success_msg = "✅ Task completed successfully"
+            if result.get("success"):
+                return f"{success_msg}: '{task_name}'"
+            else:
+                return f"❌ Task failed: '{task_name}' - {result.get('error_message', 'Unknown error')}"
+        
+        elif event_type == "task.failed":
+            task_name = progress_data.get("selected_task_name", "Unknown") if progress_data else "Unknown"
+            error_msg = progress_data.get("error_message", "Unknown error") if progress_data else "Unknown error"
+            return f"❌ Task execution failed: '{task_name}' - {error_msg}"
+        
+        else:
+            # Fallback for unknown event types
+            return f"📊 Task progress: {event_type} - {context.current_state.value}"
+    
     async def _find_tasks(self, context: AgentContext) -> AgentContext:
         """Find relevant tasks based on action description."""
         logger.info(f"Finding tasks for: {context.action_description}")
         print(f"🔍 TASK AGENT: Finding tasks for: {context.action_description}")
+        
+        # Send progress message
+        self._send_progress_message(
+            context, 
+            "task.finding_tasks", 
+            {"action_description": context.action_description}
+        )
         
         try:
             # Use the find_tasks tool
@@ -103,6 +182,13 @@ class TaskExecutionAgent:
         """Select the most suitable task from available options using LLM agent."""
         logger.info(f"Selecting task from {len(context.available_tasks)} options")
         print(f"🎯 TASK AGENT: Selecting task from {len(context.available_tasks)} options")
+        
+        # Send progress message
+        self._send_progress_message(
+            context, 
+            "task.selecting_task", 
+            {"available_tasks_count": len(context.available_tasks)}
+        )
         
         if not context.available_tasks:
             context.error_message = "No tasks found for the given action"
@@ -155,6 +241,16 @@ class TaskExecutionAgent:
         """Get input schema for the selected task."""
         logger.info(f"Getting inputs for task: {context.selected_task.task_id}")
         
+        # Send progress message
+        self._send_progress_message(
+            context, 
+            "task.getting_inputs", 
+            {
+                "selected_task_id": context.selected_task.task_id,
+                "selected_task_name": context.selected_task.task_name
+            }
+        )
+        
         try:
             # Use the get_task_inputs tool
             # from task_executor_agent.tools.langchain_tools import get_task_inputs
@@ -190,6 +286,13 @@ class TaskExecutionAgent:
         """Get available runtime variables for the context."""
         logger.info(f"Getting variables for context: {context.context_id}")
         
+        # Send progress message
+        self._send_progress_message(
+            context, 
+            "task.getting_variables", 
+            {"context_id": context.context_id}
+        )
+        
         try:
             # Use the get_runtime_variables tool
             # from task_executor_agent.tools.langchain_tools import get_runtime_variables
@@ -223,6 +326,16 @@ class TaskExecutionAgent:
     async def _map_inputs(self, context: AgentContext) -> AgentContext:
         """Map task inputs to runtime variables using LLM agent."""
         logger.info("Mapping task inputs to runtime variables using LLM agent")
+        
+        # Send progress message
+        self._send_progress_message(
+            context, 
+            "task.mapping_inputs", 
+            {
+                "task_inputs_count": len(context.task_inputs),
+                "runtime_variables_count": len(context.runtime_variables)
+            }
+        )
         
         try:
             # Create input mapping request
@@ -280,6 +393,17 @@ class TaskExecutionAgent:
         """Execute the task with mapped input assignments."""
         logger.info(f"Executing task: {context.selected_task.task_id}")
         
+        # Send progress message
+        self._send_progress_message(
+            context, 
+            "task.executing", 
+            {
+                "selected_task_id": context.selected_task.task_id,
+                "selected_task_name": context.selected_task.task_name,
+                "mapped_inputs_count": len(context.mapped_inputs)
+            }
+        )
+        
         try:
             # Convert InputAssignment objects to dictionaries for the API
             input_assignments = {}
@@ -307,9 +431,29 @@ class TaskExecutionAgent:
             
             if result["success"]:
                 logger.info("Task executed successfully")
+                # Send completion message
+                self._send_progress_message(
+                    context, 
+                    "task.completed", 
+                    {
+                        "selected_task_id": context.selected_task.task_id,
+                        "selected_task_name": context.selected_task.task_name,
+                        "execution_result": result
+                    }
+                )
             else:
                 logger.error(f"Task execution failed: {result.get('error_message', 'Unknown error')}")
                 context.error_message = result.get("error_message", "Task execution failed")
+                # Send failure message
+                self._send_progress_message(
+                    context, 
+                    "task.failed", 
+                    {
+                        "selected_task_id": context.selected_task.task_id,
+                        "selected_task_name": context.selected_task.task_name,
+                        "error_message": context.error_message
+                    }
+                )
             
         except Exception as e:
 
@@ -378,6 +522,13 @@ class TaskExecutionAgent:
             current_state=AgentState.FIND_TASKS
         )
         print(f"📋 TASK AGENT: Created context with ID: {context_id}")
+        
+        # Send start message
+        self._send_progress_message(
+            context, 
+            "task.started", 
+            {"action_description": action_description}
+        )
         
         try:
             # Run the graph
