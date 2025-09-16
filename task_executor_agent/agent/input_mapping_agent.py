@@ -109,6 +109,7 @@ class InputMappingAgent:
 - **Type Compatibility**: Ensure types are compatible (string → string, int → int)
 - **Context Relevance**: Consider the context and purpose of the input
 - **Memory Lookup**: Use agent memory to find explicit values
+- **Conversation History**: Use previous conversation context to understand what values might be needed
 - **Default Values**: Use task input default values when available
 
 ## Assignment Types:
@@ -179,6 +180,8 @@ You must respond with a JSON object in this exact format:
             return mapping_result
             
         except Exception as e:
+            import traceback
+            logger.error(f"Exception stacktrace:\n{traceback.format_exc()}")
             logger.error(f"Input mapping failed: {e}")
             return InputMappingResponse(
                 mapped_assignments={},
@@ -200,12 +203,24 @@ You must respond with a JSON object in this exact format:
         # Format runtime variables
         variables_info = []
         for var in request.runtime_variables:
-            variables_info.append(f"- {var.name} ({var.type}): {var.description} [ID: {var.variable_id}]")
+            variables_info.append(f"- {var.name} ({var.var_type}): {var.description} [ID: {var.variable_id}]")
         
-        # Format agent memory
+        # Format agent memory (including session memory)
         memory_info = ""
         if request.agent_memory:
-            memory_info = f"\nAgent Memory:\n{json.dumps(request.agent_memory, indent=2)}"
+            # Check if this is session memory data
+            if "conversation_history" in request.agent_memory:
+                # Format conversation history for better readability
+                conversation_history = request.agent_memory.get("conversation_history", [])
+                message_count = request.agent_memory.get("message_count", 0)
+                session_id = request.agent_memory.get("session_id", "unknown")
+                
+                memory_info = f"\nSession Memory (Session: {session_id}, Messages: {message_count}):\n"
+                for i, (role, content) in enumerate(conversation_history[-10:], 1):  # Show last 10 messages
+                    memory_info += f"  {i}. {role}: {content[:200]}{'...' if len(content) > 200 else ''}\n"
+            else:
+                # Regular agent memory
+                memory_info = f"\nAgent Memory:\n{json.dumps(request.agent_memory, indent=2)}"
         
         context_info = f"\nContext ID: {request.context_id}" if request.context_id else ""
         

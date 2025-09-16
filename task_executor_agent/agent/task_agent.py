@@ -28,19 +28,29 @@ except ImportError:
     RABBITMQ_AVAILABLE = False
     logger.warning("RabbitMQ service not available, progress messages will be skipped")
 
+# Import session memory for input mapping
+try:
+    from app.memory.session_memory import SessionMemoryStore
+    SESSION_MEMORY_AVAILABLE = True
+except ImportError:
+    SESSION_MEMORY_AVAILABLE = False
+    logger.warning("Session memory not available, input mapping will not have access to conversation history")
+
 logger = logging.getLogger(__name__)
 
 
 class TaskExecutionAgent:
     """LangGraph-based agent for automated task execution."""
     
-    def __init__(self, llm_provider: str = "openai"):
+    def __init__(self, llm_provider: str = "openai", session_memory: Optional[SessionMemoryStore] = None):
         """
         Initialize the task execution agent.
         
         Args:
             llm_provider: LLM provider for both task selection and input mapping agents
+            session_memory: Session memory store for accessing conversation history
         """
+        self.session_memory = session_memory
         self.task_selection_agent = TaskSelectionAgent(llm_provider=llm_provider)
         self.input_mapping_agent = InputMappingAgent(llm_provider=llm_provider)
         self.graph = self._build_graph()
@@ -355,16 +365,39 @@ class TaskExecutionAgent:
         )
         
         try:
+            # Fetch session memory if available
+            session_memory_data = None
+            if SESSION_MEMORY_AVAILABLE and self.session_memory and context.session_id:
+                try:
+                    session = self.session_memory.get(context.session_id)
+                    # Convert session memory to a dictionary format for the input mapping agent
+                    session_memory_data = {
+                        "conversation_history": session.get_conversation_history(),
+                        "message_count": len(session.messages),
+                        "session_id": context.session_id
+                    }
+                    logger.info(f"Retrieved session memory for session {context.session_id}: {len(session.messages)} messages")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch session memory: {e}")
+            
             # Create input mapping request
             mapping_request = InputMappingRequest(
                 task_inputs=context.task_inputs,
                 runtime_variables=context.runtime_variables,
-                agent_memory=context.agent_memory,  # Add agent memory if available
+                agent_memory=session_memory_data,  # Use session memory instead of agent_memory
                 context_id=context.context_id
             )
             
             # Use LLM agent to map inputs
             mapping_response = await self.input_mapping_agent.map_inputs(mapping_request)
+
+            # Print mapping response details
+            logger.info("Input Mapping Response:")
+            logger.info(f"Mapped Assignments: {json.dumps(mapping_response.mapped_assignments, indent=2)}")
+            logger.info(f"Unmapped Inputs: {mapping_response.unmapped_inputs}")
+            logger.info(f"Mapping Reasoning: {json.dumps(mapping_response.mapping_reasoning, indent=2)}")
+            logger.info(f"Confidence Scores: {json.dumps(mapping_response.confidence_scores, indent=2)}")
+            logger.info(f"Suggestions: {json.dumps(mapping_response.suggestions, indent=2)}")
             
             # Log mapping results
             logger.info(f"LLM mapped {len(mapping_response.mapped_assignments)} inputs")
@@ -515,9 +548,10 @@ class TaskExecutionAgent:
         return context
     
     async def execute(
-        self,
-        action_description: str,
-        context_id: str
+        self, 
+        action_description: str, 
+        context_id: str,
+        session_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Execute a task based on action description.
@@ -525,6 +559,7 @@ class TaskExecutionAgent:
         Args:
             action_description: Description of the action to perform
             context_id: Runtime context identifier
+            session_id: Session ID for accessing shared memory
             
         Returns:
             Execution result dictionary
@@ -536,6 +571,7 @@ class TaskExecutionAgent:
         context = AgentContext(
             action_description=action_description,
             context_id=context_id,
+            session_id=session_id,
             current_state=AgentState.FIND_TASKS
         )
         print(f"📋 TASK AGENT: Created context with ID: {context_id}")
@@ -585,14 +621,15 @@ class TaskExecutionAgent:
             }
 
 
-def create_task_agent(llm_provider: str = "openai") -> TaskExecutionAgent:
+def create_task_agent(llm_provider: str = "openai", session_memory: Optional[SessionMemoryStore] = None) -> TaskExecutionAgent:
     """
     Create a task execution agent.
     
     Args:
         llm_provider: LLM provider for both task selection and input mapping agents
+        session_memory: Session memory store for accessing conversation history
         
     Returns:
         Task execution agent instance
     """
-    return TaskExecutionAgent(llm_provider=llm_provider)
+    return TaskExecutionAgent(llm_provider=llm_provider, session_memory=session_memory)

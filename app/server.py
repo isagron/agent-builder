@@ -168,7 +168,7 @@ def create_app() -> FastAPI:
         # Initialize Task Executor Agent
         try:
             nonlocal task_executor_agent
-            task_executor_agent = create_task_agent(llm_provider="openai")
+            task_executor_agent = create_task_agent(llm_provider="openai", session_memory=session_memory)
             set_task_executor_agent(task_executor_agent)
             print("✅ Task Executor Agent initialized")
         except Exception as e:

@@ -77,7 +77,7 @@ async def get_task_inputs(task_id: int) -> List[Dict[str, Any]]:
         inputs = []
 
 
-        if task_id == "1":
+        if task_id == 1:
             inputs.append({
                 "name": "server_ip",
                 "type": "string",
@@ -92,7 +92,7 @@ async def get_task_inputs(task_id: int) -> List[Dict[str, Any]]:
                 "required": True,
                 "default_value": None
             })
-        elif task_id == "2":
+        elif task_id == 2:
             inputs.append({
                 "name": "source_ip",
                 "type": "string",
@@ -114,7 +114,7 @@ async def get_task_inputs(task_id: int) -> List[Dict[str, Any]]:
                 "required": True,
                 "default_value": None
             })
-        elif task_id == "3":
+        elif task_id == 3:
             inputs.append({
                 "name": "network_element_ip",
                 "type": "string",

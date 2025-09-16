@@ -86,7 +86,8 @@ async def execute_task(
         # Execute the task
         result = await agent.execute(
             action_description=request.action_description,
-            context_id=request.context_id
+            context_id=request.context_id,
+            session_id=request.session_id
         )
         
         # Create response

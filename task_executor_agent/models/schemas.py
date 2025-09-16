@@ -20,8 +20,8 @@ class AgentState(str, Enum):
 
 class AssignmentType(str, Enum):
     """Assignment type enumeration."""
-    EXPLICIT = "explicit"
-    VARIABLE_REFERENCE = "variable_reference"
+    EXPLICIT = "EXPLICIT"
+    VARIABLE_REFERENCE = "VARIABLE_REFERENCE"
 
 
 class TaskPropertyType(str, Enum):
@@ -49,6 +49,7 @@ class ExecuteRequest(BaseModel):
     """Request model for task execution."""
     action_description: str = Field(..., description="Description of the action to perform")
     context_id: str = Field(..., description="Runtime context identifier")
+    session_id: Optional[str] = Field(default=None, description="Session ID for accessing shared memory")
     timeout: Optional[int] = Field(default=30, description="Execution timeout in seconds")
 
 
@@ -107,6 +108,7 @@ class AgentContext(BaseModel):
     """Agent execution context."""
     action_description: str = Field(..., description="Original action description")
     context_id: str = Field(..., description="Runtime context identifier")
+    session_id: Optional[str] = Field(default=None, description="Session ID for accessing shared memory")
     current_state: AgentState = Field(default=AgentState.FIND_TASKS, description="Current agent state")
     available_tasks: List[TaskInfo] = Field(default_factory=list, description="Available tasks")
     selected_task: Optional[TaskInfo] = Field(default=None, description="Selected task")
@@ -117,7 +119,6 @@ class AgentContext(BaseModel):
     error_message: Optional[str] = Field(default=None, description="Error message if any")
     agent_memory: Optional[Dict[str, Any]] = Field(default=None, description="Agent memory for context")
     start_time: datetime = Field(default_factory=datetime.utcnow, description="Execution start time")
-
 
 # HTTP Tool Models
 class FindTasksRequest(BaseModel):

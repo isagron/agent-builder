@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -16,6 +17,8 @@ from app.services.completion_evaluation import (
 from app.services.rabbitmq_service import send_agent_created_message
 from app.services.doc_index import DocumentIndex
 from app.tools.registry import tool_registry
+
+logger = logging.getLogger(__name__)
 
 
 class Agent:
@@ -49,6 +52,7 @@ class AgentRegistry:
         self.doc_index = doc_index
 
     async def create_agent(self, req: CreateAgentRequest) -> str:
+        logger.info(f"Creating agent for session {req.sessionId}")
         session_memory = self.session_memory.ensure_session(req.sessionId)
 
         context_docs: List[str] = []
@@ -84,6 +88,7 @@ class AgentRegistry:
             output_schema=req.output_schema
         )
         self._agents[f"{req.sessionId}:{agent_id}"] = agent
+        logger.info(f"Agent {agent_id} created successfully for session {req.sessionId}")
 
         if req.opening_message:
             session_memory.append("assistant", req.opening_message)
@@ -101,15 +106,15 @@ class AgentRegistry:
             send_agent_created_message(agent_id, req.sessionId, additional_data)
         except Exception as e:
             # Log error but don't fail agent creation
-            import logging
-            logger = logging.getLogger(__name__)
             logger.warning(f"Failed to send RabbitMQ message for agent creation: {e}")
 
         return agent_id
 
     async def chat(self, req: ChatRequest) -> str:
+        logger.info(f"Processing chat request for agent {req.agentId} in session {req.sessionId}")
         key = f"{req.sessionId}:{req.agentId}"
         if key not in self._agents:
+            logger.error(f"Agent {req.agentId} not found in session {req.sessionId}")
             raise KeyError("Agent not found")
         agent = self._agents[key]
         session_memory = self.session_memory.get(req.sessionId)
@@ -144,6 +149,9 @@ class AgentRegistry:
             # Store the parsed response
             session_memory.append("assistant", agent_output)
             
+            logger.info(f"Agent response: {agent_output}")
+            logger.info(f"Agent schema: {schema_success}")
+
             # Return the structured response
             return json.dumps({
                 "agent_output": agent_output,
@@ -151,6 +159,8 @@ class AgentRegistry:
                 "schema_success": schema_success
             })
         else:
+            # Print agent response for logging/debugging
+            logger.info(f"Agent response: {response}")
             # No schema or completion evaluation - single-shot agent (complete after first response)
             session_memory.append("assistant", response)
             return json.dumps({
